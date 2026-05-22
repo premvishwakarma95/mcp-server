@@ -4,15 +4,19 @@ import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "./server.js";
+import { setupOAuth } from "./auth/oauth.js";
 
 const PORT = Number(process.env.PORT) || 3005;
 
 const app = express();
+app.set("trust proxy", true);
 app.use(express.json({ limit: "4mb" }));
+
+const auth = setupOAuth(app);
 
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 
-app.post("/mcp", async (req: Request, res: Response) => {
+app.post("/mcp", auth.requireAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   let transport: StreamableHTTPServerTransport;
 
@@ -51,8 +55,8 @@ const handleSessionRequest = async (req: Request, res: Response) => {
   await transports[sessionId].handleRequest(req, res);
 };
 
-app.get("/mcp", handleSessionRequest);
-app.delete("/mcp", handleSessionRequest);
+app.get("/mcp", auth.requireAuth, handleSessionRequest);
+app.delete("/mcp", auth.requireAuth, handleSessionRequest);
 
 app.get("/", (_req, res) => {
   res.json({
@@ -60,6 +64,7 @@ app.get("/", (_req, res) => {
     status: "ok",
     endpoint: "/mcp",
     transport: "Streamable HTTP",
+    auth: auth.enabled ? "OAuth 2.0 (authorization_code + PKCE)" : "none (open)",
   });
 });
 
