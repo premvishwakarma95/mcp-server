@@ -73,8 +73,9 @@ export function registerPeopleTools(server: McpServer) {
 
   server.tool(
     "apollo_enrich_person",
-    "Enrich a single person and reveal their verified email and phone number. Costs credits. Provide as many identifiers as you have (email, name+company, or LinkedIn URL) for the best match.",
+    "Enrich a single person and reveal their verified email and phone number. Costs 1 credit per call (8 for phone). PREFERRED FLOW: first call apollo_search_people to get the person's Apollo `id`, then call this tool with that id — that's the most reliable match. Apollo masks last names in search responses on Basic plan, so matching by name alone often fails.",
     {
+      id: z.string().optional().describe("Apollo person ID (from search results) — most reliable match"),
       first_name: z.string().optional().describe("First name"),
       last_name: z.string().optional().describe("Last name"),
       name: z.string().optional().describe("Full name (alternative to first_name + last_name)"),
@@ -104,6 +105,7 @@ export function registerPeopleTools(server: McpServer) {
       details: z
         .array(
           z.object({
+            id: z.string().optional(),
             first_name: z.string().optional(),
             last_name: z.string().optional(),
             name: z.string().optional(),
@@ -115,7 +117,7 @@ export function registerPeopleTools(server: McpServer) {
         )
         .min(1)
         .max(10)
-        .describe("Array of person identifiers to enrich (max 10)"),
+        .describe("Array of person identifiers to enrich (max 10). Prefer passing Apollo person `id` from search results."),
       reveal_personal_emails: z.boolean().optional(),
       reveal_phone_number: z.boolean().optional(),
     },
